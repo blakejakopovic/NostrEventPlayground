@@ -235,6 +235,9 @@ Example Queries
 -- Events sorted by highest (event id) PoW
 select * from events order by pow desc
 
+-- TODO: Event pow_agg is half working.. needs tweaks before we query it
+select * from events order by pow_agg desc
+
 -- Identities softed by highest (pubkey) PoW
 -- Note: This can be NULL as we may have only seen a pubkey (e.g. in tags), but no metadata event
 select * from identities where pow is not null order by pow desc
@@ -242,6 +245,12 @@ select * from identities where pow is not null order by pow desc
 -- For identities but aggregate POW (all their events)
 ## TODO: Maybe add in their identity pow to agg pow, as it should count
 select * from identities where pow_agg is not NULL order by pow_agg desc
+
+-- Who has the highest pubkey PoW?
+select name,pow from identities order by pow desc
+
+-- Who has the highest agg Pow?
+select name,pow_agg from identities order by pow_agg desc
 ```
 
 ### NIP-14 - Subject tag in Text events
@@ -414,4 +423,11 @@ and e.kind = 7
 and e.content = '-'
 
 -- TODO: Popular hashtags past 24 hours
+
+-- Who has the most followers?
+select COUNT(*) as count, i.name from follows f
+join identities i on i.id = f.followee_id
+group by followee_id, i.name order by count desc
+
+-- Who is following the most people?
 ```
