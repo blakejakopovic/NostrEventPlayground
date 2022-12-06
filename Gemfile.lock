@@ -1,0 +1,35 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    activesupport (7.0.4)
+      concurrent-ruby (~> 1.0, >= 1.0.2)
+      i18n (>= 1.6, < 2)
+      minitest (>= 5.1)
+      tzinfo (~> 2.0)
+    concurrent-ruby (1.1.10)
+    gravatar-ultimate (2.0.0)
+      activesupport (>= 2.3.14)
+      rack
+    i18n (1.12.0)
+      concurrent-ruby (~> 1.0)
+    json (2.6.3)
+    minitest (5.16.3)
+    pg (1.4.5)
+    rack (3.0.2)
+    tzinfo (2.0.5)
+      concurrent-ruby (~> 1.0)
+    webrick (1.7.0)
+    xmlrpc (0.3.2)
+      webrick
+
+PLATFORMS
+  x86_64-darwin-21
+
+DEPENDENCIES
+  gravatar-ultimate
+  json
+  pg
+  xmlrpc
+
+BUNDLED WITH
+   2.3.11

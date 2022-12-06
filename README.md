@@ -72,7 +72,8 @@ process_identity.rb - Create identity records for each unique event pubkey
 process_identity_metadata.rb - (optional) Populate Identity table meta fields using kind=0 events
 process_identity_nip05.rb - (optional) Populate Identity table nip05 fields after validating
 process_identity_nip05_gravatar.rb - (optional) Populate Identity has_gravatar field after validating existing (using NIP-05 email). Note: Requires Wordpress API key for gravatar.
-process_identity_pow.rb (optional) - Populate Identity pubkey pow
+process_identity_pow.rb - (optional) Populate Identity pubkey pow
+process_identity_pow_agg.rb - (optional) Populate the aggregate sum of all events for a pubkey
 process_identity_year_days_active.rb - (optional) Populate days active (days with an event created_at) during the past (rolling) year
 
 process_following.rb - (optional) Populate m2m follow table using kind=3 event data
@@ -101,7 +102,7 @@ Example Queries
 ```
 
 
-### NIP-03
+### NIP-02 - Contact List and Petnames
 
 Related scripts
 ```shell
@@ -133,6 +134,21 @@ inner join identities i1 on i1.id = f.follower_id
 where i1.pubkey = 'b2dd40097e4d04b1a56fb3b65fc1d1aaf2929ad30fd842c74d68b9908744495b'
 ```
 
+### NIP-03 - OpenTimestamps Attestations for Events
+
+Related scripts
+```shell
+# process_event_ots.rb is missing. It should import and validate (but I have no ots data yet)
+```
+
+Example Queries
+```sql
+-- Query for events with OTS (migrate to processing script.. but quick and dirty)
+select * from events where CAST(event_json AS VARCHAR) like '%"ots":%'
+-- OR
+select * from events where ots IS NOT NULL
+select * from events where ots IS NOT NULL AND ots_verified = true
+```
 
 ### NIP-05 - Mapping Nostr keys to DNS-based internet identifiers
 
@@ -155,21 +171,6 @@ select * from identities where nip05 IS NOT NULL AND nip05_verified_at IS NOT NU
 
 Note: The `process_identity_nip05.rb` script removes the nip05 \_@ prefix (as per the NIP), which means it will be a root domain, and not a full email.
 
-### NIP-03 - OpenTimestamps Attestations for Events
-
-Related scripts
-```shell
-# process_event_ots.rb is missing. It should import and validate (but I have no ots data yet)
-```
-
-Example Queries
-```sql
--- Query for events with OTS (migrate to processing script.. but quick and dirty)
-select * from events where CAST(event_json AS VARCHAR) like '%"ots":%'
--- OR
-select * from events where ots IS NOT NULL
-select * from events where ots IS NOT NULL AND ots_verified = true
-```
 
 ### NIP-08 - Handling Mentions
 
@@ -256,7 +257,6 @@ Example Queries
 -- TODO: Make more performant and accurate (only use tags directly) - use tags table
 select * from events where CAST(event_json AS VARCHAR)  like '%["subject",%'
 ```
-
 
 
 ### NIP-16 - Replaceable Events (replace if newer timestamp)
