@@ -1,19 +1,12 @@
 require 'gravatar-ultimate'
 require 'xmlrpc'
-require 'pg'
-require 'json'
 require_relative './lib'
 
-conn = PG.connect(
-        :dbname => 'nostr',
-        :user => 'postgres',
-        :port => 5432,
-        :host => 'localhost'
-        )
+conn = get_db_connection
 
-api = Gravatar.new("", :api_key => "")
+api = Gravatar.new(ENV["WORDPRESS_API_USER"], :api_key => ENV["WORDPRESS_API_KEY"])
 
-# identities with NIP05 that contain a complete email
+# Only process identities with NIP05 that contain a complete email (not domain only)
 results = conn.exec("select * FROM identities where nip05 IS NOT NULL AND nip05 like '%@%'")
 
 results.each do |row|

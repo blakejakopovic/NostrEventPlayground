@@ -1,13 +1,6 @@
-require 'pg'
-require 'json'
 require_relative './lib'
 
-conn = PG.connect(
-        :dbname => 'nostr',
-        :user => 'postgres',
-        :port => 5432,
-        :host => 'localhost'
-        )
+conn = get_db_connection
 
 results = conn.exec('select * from identities')
 results.each do |row|

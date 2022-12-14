@@ -1,13 +1,7 @@
-require 'pg'
 require 'json'
 require_relative './lib'
 
-conn = PG.connect(
-        :dbname => 'nostr',
-        :user => 'postgres',
-        :port => 5432,
-        :host => 'localhost'
-        )
+conn = get_db_connection
 
 
 # NIP-09 - Event Deletion
@@ -17,18 +11,25 @@ results = conn.exec('SELECT * FROM events WHERE kind = 5')
 
 results.each do |row|
 
-  tags = JSON.parse(row['event_json'])['tags'][0]
-  if !tags.nil? then
-    if !tags[1].nil? then
-      if tags[0] == 'e' || tags[0] == '#e' then
-        target_event = get_event(conn, tags[1])
-        if !target_event.nil?
+  json_event = JSON.parse(row["event_json"])
 
-          # Need to validate pubkey for both events MATCH (or could be invalid delete)
-          if target_event["pubkey"] = row["pubkey"]
-            update_event_with_deleted_event(conn, row["id"], target_event["id"])
-          end
-        end
+  # NIP-26 Delegated Event Signing support
+  # delegation = get_event_delegation_tag(json_event)
+
+  # We need to process all e tags in this event
+  for tag in get_event_e_tags(json_event)
+
+    target_event = get_event(conn, tag[1])
+    if !target_event.nil?
+
+      # TODO: Validate pubkey for both events match OR the delegation tag else it's invalid)
+      # 1. source and target pubkey are the same
+      # 2. source pubkey matches delegation pubkey
+      # 3. source delegation pubkey matches target pubkey
+      if row["pubkey"] = target_event["pubkey"] # or
+         # row["pubkey"] = delegation[1] or
+         # target_event["pubkey"] = delegation[1]
+        update_event_with_deleted_event(conn, row["id"], target_event["id"])
       end
     end
   end

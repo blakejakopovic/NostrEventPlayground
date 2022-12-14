@@ -2,8 +2,7 @@ require_relative './lib'
 
 conn = get_db_connection
 
-# TODO: Migrate to kind=1 + content=blank and e tag (NIP-XX is WIP)
-# BOOSTS: Using kind=6 for now, however using kind=1 + content=blank and e tag is the future
+# MENTIONS: Get all p tags between User A (e.pubkey) and  User B (t.value)
 results = conn.exec('SELECT f.id, i.pubkey as follower_pubkey, i2.pubkey as followee_pubkey
 FROM follows f
 join identities i on i.id = f.follower_id
@@ -20,11 +19,10 @@ join events_tags et on et.tag_id = t.id
 join events e on e.id = et.event_id
 where e.pubkey = $1
 and t.key = 'p' and t.value = $2
-and e.kind = 6
-and e.delete_event_id is null", [follower, followee]).first
+and e.kind = 1", [follower, followee]).first
 
-  boost_count = results2["count"]
+  mention_count = results2["count"]
 
-  update_follows_boost_count(conn, row["id"], boost_count)
+  update_follows_mention_count(conn, row["id"], mention_count)
 
 end

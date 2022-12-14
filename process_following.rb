@@ -1,41 +1,25 @@
-require 'pg'
 require 'json'
 require_relative './lib'
 
-conn = PG.connect(
-        :dbname => 'nostr',
-        :user => 'postgres',
-        :port => 5432,
-        :host => 'localhost'
-        )
+conn = get_db_connection()
 
 # TODO: Process unfollows or deleted follow events? Need to track which processed from last time?
-# TODO: Insert pubkeys from p tags too
-
+# Process only kind 3 events for explicit following
 results = conn.exec('SELECT * FROM events WHERE kind = 3 AND delete_event_id IS NULL')
 
 results.each do |row|
 
-  follower_id = get_identity(conn, row["pubkey"])["id"]
+  # Technically the identity will already exist if we ran this after import_events.rb
+  follower_id = create_identity(conn, row['pubkey'])
 
-  tags = JSON.parse(row['event_json'])['tags']
-  if !tags.nil? then
+  # TODO: better JSON parse error handling
+  json_event = JSON.parse(row["event_json"])
 
+  # Process all P tags and create relationship
+  for tag in get_event_p_tags(json_event)
 
-    tags.each do |tag|
-      # Check it's a p (public key) tag
-      if tag[0] == 'p'
+    ref_identity = create_identity(conn, tag[1])
 
-        # TODO: Better error checking if value even exists
-        followee = get_identity(conn, tag[1])
-
-        # TODO: Better error checking lookups were successful
-        if follower_id != nil and followee != nil
-          followee_id = followee["id"]
-
-          add_follow_relationship(conn, follower_id, followee_id, row["id"])
-        end
-      end
-    end
+    add_follow_relationship(conn, follower_id["id"], ref_identity["id"], row["id"], 'explicit')
   end
 end

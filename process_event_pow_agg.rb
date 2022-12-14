@@ -1,20 +1,14 @@
-require 'pg'
-require 'json'
 require_relative './lib'
 
-conn = PG.connect(
-        :dbname => 'nostr',
-        :user => 'postgres',
-        :port => 5432,
-        :host => 'localhost'
-        )
+conn = get_db_connection
 
-
-# NOTE: !!! THIS SCRIPT IS PRETTY SLOW !!!
+# NOTE: !!! THIS SCRIPT IS VERY SLOW (2hrs) !!!
 
 # Query for all parent events (have at least one child)
 # Note: This is dependant on processing_identity_pow_agg first
-results = conn.exec('select * from events where parent_id in (select DISTINCT(parent_id) parent_id from events where parent_id is not null order by parent_id desc)')
+# Perhaps filter down to kind=1 or kind=42
+# TODO: How do we bottom up calculate this with caching
+results = conn.exec('select * from events where parent_event_id is null')
 
 results.each do |row|
 
@@ -27,37 +21,35 @@ results.each do |row|
   results2 = conn.exec_params('
 WITH RECURSIVE
     -- starting node(s)
-    starting (id, parent_id) AS
+    starting (id, parent_event_id, pubkey, pow) AS
     (
-      SELECT e.id, e.parent_id, e.event_id, e.pubkey
+      SELECT e.id, e.parent_event_id, e.pubkey, e.pow
       FROM events AS e
       WHERE e.id = $1
     ),
-    descendants (id, parent_id) AS
+    descendants (id, parent_event_id, pubkey, pow) AS
     (
-      SELECT e.id, e.parent_id, e.event_id, e.pubkey
+      SELECT e.id, e.parent_event_id, e.pubkey, e.pow
       FROM starting AS e
       UNION ALL
-      SELECT e.id, e.parent_id, e.event_id, e.pubkey
-      FROM events AS e JOIN descendants AS d ON e.parent_id = d.id
+      SELECT e.id, e.parent_event_id, e.pubkey, e.pow
+      FROM events AS e JOIN descendants AS d ON e.parent_event_id = d.id
     ),
-    ancestors (id, parent_id) AS
+    ancestors (id, parent_event_id, pubkey, pow) AS
     (
-      SELECT e.id, e.parent_id, e.event_id, e.pubkey
+      SELECT e.id, e.parent_event_id, e.pubkey, e.pow
       FROM events AS e
-      WHERE e.id IN (SELECT parent_id FROM starting)
+      WHERE e.id IN (SELECT parent_event_id FROM starting)
       UNION ALL
-      SELECT e.id, e.parent_id, e.event_id, e.pubkey
-      FROM events AS e JOIN ancestors AS a ON e.id = a.parent_id
+      SELECT e.id, e.parent_event_id, e.pubkey, e.pow
+      FROM events AS e JOIN ancestors AS a ON e.id = a.parent_event_id
     )
 TABLE ancestors
 UNION ALL
 TABLE descendants
-Order by parent_id', [row["id"]])
+Order by parent_event_id desc', [row["id"]])
 
   results2.each do |row2|
-
-    event_pow = get_pow(row2["event_id"])
 
     identity = get_identity(conn, row2["pubkey"])
     identity_pow_agg = identity["pow_agg"]
@@ -65,9 +57,9 @@ Order by parent_id', [row["id"]])
     # puts "event_pow: #{event_pow}"
     # puts "identity_pow_agg: #{identity_pow_agg}"
 
-    pow_agg += event_pow
-    # TODO: Unsure why to_i is needed as I get "String can't be coerced into Integer"
-    pow_agg += identity_pow_agg.to_i
+    pow_agg += Integer(row2["pow"])
+    # TODO: Unsure why Integer/to_i is needed as I get "String can't be coerced into Integer"
+    pow_agg += Integer(identity_pow_agg)
 
     descendant_count += 1
 

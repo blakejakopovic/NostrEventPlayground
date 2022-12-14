@@ -1,15 +1,9 @@
-require 'pg'
-require 'json'
 require_relative './lib'
 
-conn = PG.connect(
-        :dbname => 'nostr',
-        :user => 'postgres',
-        :port => 5432,
-        :host => 'localhost'
-        )
+conn = get_db_connection
 
-results = conn.exec('select * from events')
+# Note: Let's not exclude any events atm, as even deletion/meta events contribute to pow_agg
+results = conn.exec('SELECT * FROM events')
 
 results.each do |row|
 

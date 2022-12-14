@@ -1,13 +1,6 @@
-require 'pg'
-require 'json'
 require_relative './lib'
 
-conn = PG.connect(
-        :dbname => 'nostr',
-        :user => 'postgres',
-        :port => 5432,
-        :host => 'localhost'
-        )
+conn = get_db_connection
 
 # TODO: Follows may be implicit or explicit (kind=3 OR in the wild interactions)
 
@@ -43,6 +36,7 @@ results.each do |row|
 join events_tags et on et.tag_id = t.id
 join events e on e.id = et.event_id
 where e.pubkey = $1
+and e.delete_event_id is null
 and t.key = 'p' and t.value = $2
 and e.kind = 7
 and (e.content = '' or e.content = '+' or e.content = '❤️')", [follower, followee]).first
